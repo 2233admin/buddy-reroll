@@ -1,5 +1,8 @@
 #!/usr/bin/env bun
 // buddy-reroll.js — Bun only (matches Claude Code's Bun.hash)
+// Key: OAuth users use oauthAccount.accountUuid, NOT userID
+//   Priority: oauthAccount.accountUuid ?? userID ?? "anon"
+//   Seed = (uuid|userID) + SALT → Bun.hash → mulberry32 PRNG
 
 const crypto = require('crypto')
 
@@ -91,17 +94,18 @@ if (mode === 'check') {
 if (mode === 'reroll') {
   const targetSpecies = args[1] || null
   const wantShiny = args.includes('--shiny')
+  const useUuid = args.includes('--uuid')
   const maxIter = parseInt(args[2]) || 5_000_000
   const count = parseInt(args[3]) || 5
 
-  console.log(`\nSearching: legendary${targetSpecies ? ' ' + targetSpecies : ' (any species)'}, max ${maxIter.toLocaleString()} iterations, find ${count}`)
+  console.log(`\nSearching: legendary${targetSpecies ? ' ' + targetSpecies : ' (any species)'}${useUuid ? ' (UUID format)' : ''}, max ${maxIter.toLocaleString()} iterations, find ${count}`)
   console.log('')
 
   let found = 0
   const start = Date.now()
 
   for (let i = 0; i < maxIter; i++) {
-    const uid = crypto.randomBytes(32).toString('hex')
+    const uid = useUuid ? uuidV4() : crypto.randomBytes(32).toString('hex')
     const r = rollFull(uid)
 
     if (r.rarity !== 'legendary') continue
@@ -124,7 +128,18 @@ if (mode === 'reroll') {
 }
 
 console.log(`Usage:
-  bun buddy-reroll.js check <userID>
-  bun buddy-reroll.js reroll [species] [maxIter] [count]
+  bun buddy-reroll.js check <userID|accountUuid>
+  bun buddy-reroll.js reroll [species] [maxIter] [count] [--shiny] [--uuid]
+
+  --uuid    Generate UUID v4 format (for OAuth users with accountUuid)
+            OAuth priority: oauthAccount.accountUuid ?? userID ?? "anon"
 
 Species: ${SPECIES.join(', ')}`)
+
+function uuidV4() {
+  const bytes = crypto.randomBytes(16)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = bytes.toString('hex')
+  return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20)
+}
