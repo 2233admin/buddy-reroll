@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="banner.svg" alt="buddy-reroll" width="800"/>
+</p>
+
 # buddy-reroll
 
 Reroll your Claude Code `/buddy` pet until you get the perfect one.
